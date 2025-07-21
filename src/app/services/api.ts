@@ -1,23 +1,46 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
 import { ApiResponse, Character } from '../models/character';
 
 @Injectable({
   providedIn: 'root'
 })
 export class Api {
-  private readonly API_URL = ''; 
+  private readonly API_URL: string = 'https://rickandmortyapi.com/api/character';
 
-  private charactersSignal: any; // Define esto como una señal<Character[]>
+  private readonly http = inject(HttpClient);
 
-  public readonly characters: any; // Define esto como una señal de solo lectura
+  // Señal privada para manejar el estado de los personajes
+  private charactersSignal = signal<Character[]>([]);
 
+  // Señal pública de solo lectura
+  public readonly characters = this.charactersSignal.asReadonly();
+
+  // Obtener todos los personajes
   getCharacters(): Observable<ApiResponse> {
-    throw new Error('Método no implementado');
+    return this.http.get<ApiResponse>(this.API_URL).pipe(
+      tap(response => {
+        this.charactersSignal.set(response.results);
+      })
+    );
   }
 
+  // Buscar personajes por nombre
   searchCharacters(name: string): Observable<ApiResponse> {
-    throw new Error('Método no implementado');
+    const trimmedName = name.trim();
+
+    if (trimmedName === '') {
+      return this.getCharacters(); // Retorna todos si no se escribió nada
+    }
+
+    const searchUrl = `${this.API_URL}?name=${encodeURIComponent(trimmedName)}`;
+
+    return this.http.get<ApiResponse>(searchUrl).pipe(
+      tap(response => {
+        this.charactersSignal.set(response.results);
+      })
+    );
   }
 }
